@@ -5,17 +5,23 @@ from datetime import datetime
 import subprocess
 import os
 
+from data_ingestion.extract_spotify_data import extrair_dados
+from data_processing.transform_data import transformar_dados
+
 # Configuração da página
 st.set_page_config(page_title="Meu Spotify Wrapped", page_icon="🎷", layout="wide")
 st.title("🎷 Meu Spotify Wrapped - Mês Atual")
 
 # 🔄 Botão para atualizar os dados
+from data_ingestion.extract_spotify_data import extrair_dados
+from data_processing.transform_data import transformar_dados
+
 if st.button("🔄 Atualizar Dados"):
     with st.spinner("Atualizando dados..."):
-        python_exec = os.path.join("venv", "Scripts", "python.exe")
-        subprocess.run([python_exec, "data_ingestion/extract_spotify_data.py"])
-        subprocess.run([python_exec, "data_processing/transform_data.py"])
+        extrair_dados()
+        transformar_dados()
         st.success("✅ Dados atualizados com sucesso!")
+
 
 # Verifica arquivos
 arquivos = [
