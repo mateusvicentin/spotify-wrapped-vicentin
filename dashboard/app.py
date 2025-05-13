@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
-import subprocess
 import os
 
 from data_ingestion.extract_spotify_data import extrair_dados
@@ -13,17 +12,13 @@ st.set_page_config(page_title="Meu Spotify Wrapped", page_icon="🎷", layout="w
 st.title("🎷 Meu Spotify Wrapped - Mês Atual")
 
 # 🔄 Botão para atualizar os dados
-from data_ingestion.extract_spotify_data import extrair_dados
-from data_processing.transform_data import transformar_dados
-
 if st.button("🔄 Atualizar Dados"):
     with st.spinner("Atualizando dados..."):
         extrair_dados()
         transformar_dados()
         st.success("✅ Dados atualizados com sucesso!")
 
-
-# Verifica arquivos
+# Verifica existência dos arquivos essenciais
 arquivos = [
     "data/cleaned_tracks.csv", "data/top_tracks.csv", "data/top_artists.csv",
     "data/top_genres.csv", "data/hourly_distribution.csv",
@@ -34,7 +29,7 @@ if not all(os.path.exists(arq) for arq in arquivos):
     st.warning("🚧 Os dados ainda não foram gerados. Clique em 'Atualizar Dados'.")
     st.stop()
 
-# Carregamento
+# Carregamento de dados
 df = pd.read_csv("data/cleaned_tracks.csv")
 top_tracks = pd.read_csv("data/top_tracks.csv")
 top_artists = pd.read_csv("data/top_artists.csv")
@@ -49,6 +44,7 @@ df["played_at"] = pd.to_datetime(df["played_at"])
 mes_atual = datetime.now().month
 df_mes = df[df["date"].dt.month == mes_atual]
 
+# 🎛️ Filtros
 with st.sidebar:
     st.header("🎧 Filtros")
     artistas = df_mes["artist_name"].unique()
@@ -60,7 +56,7 @@ with st.sidebar:
     data_ini, data_fim = st.date_input("🗓️ Período", [min_date, max_date])
     df_mes = df_mes[(df_mes["date"] >= pd.to_datetime(data_ini)) & (df_mes["date"] <= pd.to_datetime(data_fim))]
 
-# Métricas principais
+# 📊 Métricas
 col1, col2, col3 = st.columns(3)
 col1.metric("🎵 Faixas Únicas", len(df_mes))
 col2.metric("⏱️ Tempo médio", f"{df_mes['duration_min'].mean():.2f} min")
@@ -71,7 +67,7 @@ st.success(f"🕒 Tempo total ouvido: {int(tempo_total // 60)}h {int(tempo_total
 
 st.markdown("---")
 
-# Tabelas principais formatadas
+# Tabelas principais
 top_tracks.columns = ["Música", "Tocadas"]
 top_artists.columns = ["Artista", "Tocadas"]
 top_genres.columns = ["Estilo", "Tocadas"]
@@ -89,7 +85,7 @@ with col3:
 
 st.markdown("---")
 
-# Gráficos
+# 📈 Gráficos
 st.subheader("📈 Evolução Diária de Faixas")
 fig_daily = px.line(daily, x="date", y="quantidade", markers=True,
                     labels={"date": "Data", "quantidade": "Faixas"},
@@ -111,9 +107,10 @@ fig_week = px.bar(weekday, x="weekday", y="quantidade",
 fig_week.update_layout(plot_bgcolor="white")
 st.plotly_chart(fig_week, use_container_width=True)
 
-# Tabela final de faixas
+# 📋 Tabela final
 st.markdown("---")
 st.subheader("📋 Faixas Tocadas no Mês")
+
 df_mes = df_mes.sort_values(by="played_at", ascending=False)
 df_limpo = df_mes[["date", "played_at", "track_name", "artist_name", "duration_min", "weekday"]].copy()
 df_limpo["played_at"] = df_limpo["played_at"].dt.strftime("%H:%M")
@@ -123,29 +120,18 @@ df_limpo["weekday"] = df_limpo["weekday"].map({
     "Thursday": "Quinta-feira", "Friday": "Sexta-feira", "Saturday": "Sábado", "Sunday": "Domingo"
 }).fillna(df_limpo["weekday"])
 
-def formatar_duracao(minutos):
-    total_segundos = int(minutos * 60)
-    minutos = total_segundos // 60
-    segundos = total_segundos % 60
-    return f"{minutos}:{segundos:02d}"
-
-df_limpo["Duração"] = df_limpo["duration_min"].apply(formatar_duracao)
-
+df_limpo["Duração"] = df_limpo["duration_min"].apply(lambda x: f"{int(x)}:{int(x*60)%60:02d}")
 df_limpo = df_limpo.rename(columns={
-    "date": "Data",
-    "played_at": "Hora",
-    "track_name": "Música",
-    "artist_name": "Artista",
+    "date": "Data", "played_at": "Hora",
+    "track_name": "Música", "artist_name": "Artista",
     "weekday": "Dia da Semana"
-})
-
-df_limpo = df_limpo[["Data", "Hora", "Dia da Semana", "Música", "Artista", "Duração"]]
+})[["Data", "Hora", "Dia da Semana", "Música", "Artista", "Duração"]]
 df_limpo = df_limpo.drop_duplicates(subset=["Data", "Hora", "Música", "Artista"])
 
 st.dataframe(df_limpo, use_container_width=True)
 
-# Downloads
-st.markdown("### 📅 Baixar Arquivos CSV")
+# 📥 Downloads
+st.markdown("### 📥 Baixar Arquivos CSV")
 col3, col4, col5 = st.columns(3)
 with col3:
     with open("data/cleaned_tracks.csv", "rb") as f:
