@@ -1,0 +1,7 @@
+spotipy
+pandas
+sqlalchemy
+streamlit
+dbt-core
+dbt-sqlite 
+python-dotenv
