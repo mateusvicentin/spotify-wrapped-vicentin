@@ -3,7 +3,12 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 import os
+import sys
 
+# Adiciona raiz ao path para importar os módulos
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Importações internas
 from data_ingestion.extract_spotify_data import extrair_dados
 from data_processing.transform_data import transformar_dados
 
@@ -11,25 +16,24 @@ from data_processing.transform_data import transformar_dados
 st.set_page_config(page_title="Meu Spotify Wrapped", page_icon="🎷", layout="wide")
 st.title("🎷 Meu Spotify Wrapped - Mês Atual")
 
-# 🔄 Botão para atualizar os dados
+# Botão de atualização
 if st.button("🔄 Atualizar Dados"):
     with st.spinner("Atualizando dados..."):
         extrair_dados()
         transformar_dados()
         st.success("✅ Dados atualizados com sucesso!")
 
-# Verifica existência dos arquivos essenciais
+# Verifica arquivos essenciais
 arquivos = [
     "data/cleaned_tracks.csv", "data/top_tracks.csv", "data/top_artists.csv",
     "data/top_genres.csv", "data/hourly_distribution.csv",
     "data/daily_trend.csv", "data/weekday_distribution.csv"
 ]
-
 if not all(os.path.exists(arq) for arq in arquivos):
     st.warning("🚧 Os dados ainda não foram gerados. Clique em 'Atualizar Dados'.")
     st.stop()
 
-# Carregamento de dados
+# Carregamento dos dados
 df = pd.read_csv("data/cleaned_tracks.csv")
 top_tracks = pd.read_csv("data/top_tracks.csv")
 top_artists = pd.read_csv("data/top_artists.csv")
@@ -38,7 +42,7 @@ hourly = pd.read_csv("data/hourly_distribution.csv")
 daily = pd.read_csv("data/daily_trend.csv")
 weekday = pd.read_csv("data/weekday_distribution.csv")
 
-# Conversões e filtros
+# Conversões
 df["date"] = pd.to_datetime(df["date"])
 df["played_at"] = pd.to_datetime(df["played_at"])
 mes_atual = datetime.now().month
@@ -48,7 +52,7 @@ df_mes = df[df["date"].dt.month == mes_atual]
 with st.sidebar:
     st.header("🎧 Filtros")
     artistas = df_mes["artist_name"].unique()
-    artista_sel = st.selectbox("🎼 Artista", ["Todos"] + sorted(list(artistas)))
+    artista_sel = st.selectbox("🎼 Artista", ["Todos"] + sorted(artistas))
     if artista_sel != "Todos":
         df_mes = df_mes[df_mes["artist_name"] == artista_sel]
     min_date = df_mes["date"].min()
@@ -56,18 +60,18 @@ with st.sidebar:
     data_ini, data_fim = st.date_input("🗓️ Período", [min_date, max_date])
     df_mes = df_mes[(df_mes["date"] >= pd.to_datetime(data_ini)) & (df_mes["date"] <= pd.to_datetime(data_fim))]
 
-# 📊 Métricas
+# 📊 Métricas principais
 col1, col2, col3 = st.columns(3)
 col1.metric("🎵 Faixas Únicas", len(df_mes))
-col2.metric("⏱️ Tempo médio", f"{df_mes['duration_min'].mean():.2f} min")
-col3.metric("🗓️ Média diária", f"{len(df_mes)/df_mes['date'].nunique():.1f} faixas/dia")
+col2.metric("⏱️ Tempo Médio", f"{df_mes['duration_min'].mean():.2f} min")
+col3.metric("🗓️ Média Diária", f"{len(df_mes)/df_mes['date'].nunique():.1f} faixas/dia")
 
 tempo_total = df_mes["duration_min"].sum()
 st.success(f"🕒 Tempo total ouvido: {int(tempo_total // 60)}h {int(tempo_total % 60)}min")
 
 st.markdown("---")
 
-# Tabelas principais
+# 📋 Tabelas principais
 top_tracks.columns = ["Música", "Tocadas"]
 top_artists.columns = ["Artista", "Tocadas"]
 top_genres.columns = ["Estilo", "Tocadas"]
@@ -107,7 +111,7 @@ fig_week = px.bar(weekday, x="weekday", y="quantidade",
 fig_week.update_layout(plot_bgcolor="white")
 st.plotly_chart(fig_week, use_container_width=True)
 
-# 📋 Tabela final
+# 📋 Tabela formatada
 st.markdown("---")
 st.subheader("📋 Faixas Tocadas no Mês")
 
@@ -126,8 +130,8 @@ df_limpo = df_limpo.rename(columns={
     "track_name": "Música", "artist_name": "Artista",
     "weekday": "Dia da Semana"
 })[["Data", "Hora", "Dia da Semana", "Música", "Artista", "Duração"]]
-df_limpo = df_limpo.drop_duplicates(subset=["Data", "Hora", "Música", "Artista"])
 
+df_limpo = df_limpo.drop_duplicates(subset=["Data", "Hora", "Música", "Artista"])
 st.dataframe(df_limpo, use_container_width=True)
 
 # 📥 Downloads
