@@ -1,7 +1,7 @@
-spotipy
-pandas
-sqlalchemy
 streamlit
-dbt-core
-dbt-sqlite 
+pandas
+plotly
+spotipy
+duckdb
 python-dotenv
+tqdm
